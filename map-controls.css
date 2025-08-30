@@ -1,0 +1,131 @@
+/* Map Controls */
+.map-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10;
+}
+
+.map-controls button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 4px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.map-controls button:hover {
+    background-color: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+/* Map Legend */
+.map-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background-color: white;
+    border-radius: 4px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 10;
+    max-width: 200px;
+}
+
+.map-legend h4 {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 10px;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.2);
+}
+
+.legend-color.plant {
+    background-color: #e74c3c;
+}
+
+.legend-color.solar {
+    background-color: #f1c40f;
+}
+
+.legend-color.wind {
+    background-color: #3498db;
+}
+
+.legend-color.hydro {
+    background-color: #2980b9;
+}
+
+.legend-color.pipeline {
+    background-color: #9b59b6;
+}
+
+.legend-color.storage {
+    background-color: #34495e;
+}
+
+/* Popup Styles */
+.mapboxgl-popup {
+    max-width: 300px;
+}
+
+.mapboxgl-popup-content {
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.asset-popup h3 {
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+.asset-popup p {
+    margin-bottom: 5px;
+}
+
+.asset-popup .capacity {
+    font-weight: bold;
+    color: #27ae60;
+}
+
+.asset-popup .status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status.operational {
+    background-color: #e8f5e9;
+    color: #27ae60;
+}
+
+.status.planned {
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.status.under_construction {
+    background-color: #fff3e0;
+    color: #f57c00;
+}
