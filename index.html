@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrogen Ecosystem Mapping Tool</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #1a3a4a;
+            --secondary: #2c5f7e;
+            --accent: #3ba99c;
+            --light: #f5f7f9;
+            --dark: #333;
+            --success: #3ba99c;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --info: #3498db;
+            --gray: #6c757d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            color: var(--dark);
+            background-color: #f8fafc;
+        }
+        
+        header {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .logo-icon {
+            font-size: 1.8rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        nav {
+            display: flex;
+            gap: 1.5rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        nav a:hover, nav a.active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: white;
+            transition: all 0.3s;
+            transform: translateX(-50%);
+        }
+        
+        nav a.active::after {
+            width: 80%;
+        }
+        
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: var(--light);
+            padding: 1.5rem;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            z-index: 900;
+            transition: all 0.3s;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s;
+        }
+        
+        .panel:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .panel h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filters label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+        
+        .filters select, .filters input {
+            width: 100%;
+            padding: 0.6rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .filters select:focus, .filters input:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 169, 156, 0.2);
+        }
+        
+        .checkbox-group {
+            margin: 1rem 0;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.6rem;
+        }
+        
+        .checkbox-item input {
+            margin-right: 0.6rem;
+            width: auto;
+        }
+        
+        .btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn:hover {
+            background: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--secondary);
+            color: var(--secondary);
+        }
+        
+        .btn-outline:hover {
+            background: #f0f5f9;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 800;
+            max-width: 250px;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .legend h3 {
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+            color: var(--secondary);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.6rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 0.6rem;
+            border-radius: 50%;
+        }
+        
+        .analysis-results {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .results-list {
+            list-style: none;
+        }
+        
+        .results-list li {
+            padding: 0.6rem;
+            margin-bottom: 0.5rem;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border-left: 3px solid var(--secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .results-list li:hover {
+            background: #e9f2f8;
+            transform: translateX(5px);
+        }
+        
+        .layer-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .layer-btn {
+            padding: 0.5rem;
+            background: #e9ecef;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .layer-btn.active {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        /* Page content styles */
+        .page-content {
+            display: none;
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            animation: fadeIn 0.5s;
+        }
+        
+        .page-content.active {
+            display: block;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--accent);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 1rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--secondary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-card .trend {
+            font-size: 0.9rem;
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .trend.down {
+            color: var(--danger);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+            height: 300px;
+            transition: all 0.3s;
+        }
+        
+        .chart-container:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .project-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .project-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .project-status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-planned {
+            background: #e9f5ff;
+            color: #0066cc;
+        }
+        
+        .status-construction {
+            background: #fff4e6;
+            color: #cc5500;
+        }
+        
+        .status-operational {
+            background: #e6f7ee;
+            color: #00875a;
+        }
+        
+        .project-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .detail-item h4 {
+            font-size: 0.8rem;
+            color: var(--gray);
+            margin-bottom: 0.3rem;
+        }
+        
+        /* Calculator styles */
+        .calculator {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+        }
+        
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .calculator-result {
+            background: #f0f7ff;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .calculator-result h3 {
+            color: var(--secondary);
+            margin-bottom: 1rem;
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        /* Home page styles */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            animation: fadeIn 1s;
+        }
+        
+        .hero h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto 2rem;
+            opacity: 0.9;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card h3 {
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 40%;
+            }
+            
+            .hero h2 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+        
+        /* Loading indicator */
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        
+        .filter-summary {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            background: #f0f7ff;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+        
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+        
+        .notification.info {
+            border-left: 4px solid var(--info);
+        }
+        
+        /* Animation classes */
+        .animate-up {
+            animation: slideUp 0.5s;
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        /* Map controls */
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 800;
+            background: white;
+            border-radius: 8px;
+            padding: 0.8rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .map-control-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .map-control-btn:hover {
+            background: var(--light);
+            transform: scale(1.1);
+        }
+        
+        /* Slider styling */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #d7dcdf;
+            outline: none;
+            margin: 10px 0;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--primary);
+            transform: scale(1.2);
+        }
+        
+        /* Calculator specific styles */
+        .calculator-input-group {
+            margin-bottom: 1.2rem;
+        }
+        
+        .calculator-input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--gray);
+        }
+        
+        .calculator-input-group input,
+        .calculator-input-group select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .calculator-input-group input:focus,
+        .calculator-input-group select:focus {
+            border-color: var(--accent);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 169, 156, 0.2);
+        }
+        
+        .calculator-results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .result-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.2rem;
+            text-align: center;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+        
+        .result-card h4 {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+        
+        .result-card .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .result-card .unit {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-icon"><i class="fas fa-leaf"></i></span>
+            <h1>Hydrogen Ecosystem Mapping Tool</h1>
+        </div>
+        <nav>
+            <a href="#" class="nav-link active" data-page="home"><i class="fas fa-home"></i> Home</a>
+            <a href="#" class="nav-link" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="#" class="nav-link" data-page="map"><i class="fas fa-map-marked-alt"></i> Map</a>
+            <a href="#" class="nav-link" data-page="analytics"><i class="fas fa-chart-line"></i> Analytics</a>
+            <a href="#" class="nav-link" data-page="calculator"><i class="fas fa-calculator"></i> Calculator</a>
+            <a href="#" class="nav-link" data-page="data"><i class="fas fa-database"></i> Data Sources</a>
+        </nav>
+    </header>
+    
+    <div class="main-container">
+        <!-- Home Page -->
+        <div id="home" class="page-content active">
+            <div class="hero">
+                <h2>Hydrogen Ecosystem Mapping Platform</h2>
+                <p>Advanced analytics and visualization for hydrogen infrastructure planning, investment analysis, and site optimization</p>
+                <div class="hero-buttons">
+                    <button class="btn" onclick="showPage('map')"><i class="fas fa-map"></i> Explore Map</button>
+                    <button class="btn btn-outline" onclick="showPage('calculator')"><i class="fas fa-calculator"></i> Investment Calculator</button>
+                </div>
+            </div>
+            
+            <div class="features">
+                <div class="feature-card animate-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-map-marked-alt"></i>
+                    </div>
+                    <h3>Interactive Mapping</h3>
+                    <p>Visualize hydrogen infrastructure with multiple layers and real-time data updates</p>
+                </div>
+                
+                <div class="feature-card animate-up" style="animation-delay: 0.2s;">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Advanced Analytics</h3>
+                    <p>Comprehensive market analysis, forecasting, and investment opportunity identification</p>
+                </div>
+                
+                <div class="feature-card animate-up" style="animation-delay: 0.4s;">
+                    <div class="feature-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h3>Financial Tools</h3>
+                    <p>Calculate project feasibility, ROI, and funding requirements with our advanced calculators</p>
+                </div>
+            </div>
+            
+            <h2>Recent Activity</h2>
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>New Projects This Month</h3>
+                    <div class="value">8</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> 24% increase</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Investment Value</h3>
+                    <div class="value">$3.2B</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> $650M this quarter</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>User Activity</h3>
+                    <div class="value">1,243</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> 18% more active users</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Dashboard Page -->
+        <div id="dashboard" class="page-content">
+            <h2>Hydrogen Ecosystem Dashboard</h2>
+            <p class="subtitle">Overview of hydrogen infrastructure and development opportunities</p>
+            
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Total Production Capacity</h3>
+                    <div class="value">4,250 t/year</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> +12% since last year</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Storage Capacity</h3>
+                    <div class="value">1,130 t</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> +8% since last year</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Pipeline Network</h3>
+                    <div class="value">845 km</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> +15% since last year</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Recommended Projects</h3>
+                    <div class="value">12</div>
+                    <div class="trend"><i class="fas fa-dollar-sign"></i> $2.3B potential investment</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="productionChart"></canvas>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="chart-container">
+                    <canvas id="demandChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+            
+            <h3>Recent Activity</h3>
+            <div class="project-card">
+                <div class="project-header">
+                    <h4>Central Hydrogen Hub Phase 2</h4>
+                    <span class="project-status status-construction">Construction</span>
+                </div>
+                <p>Expansion of electrolyzer capacity and storage facilities</p>
+                <div class="project-details">
+                    <div class="detail-item">
+                        <h4>Investment</h4>
+                        <div>$450M</div>
+                    </div>
+                    <div class="detail-item">
+                        <h4>Completion</h4>
+                        <div>Q3 2024</div>
+                    </div>
+                    <div class="detail-item">
+                        <h4>Capacity Added</h4>
+                        <div>800 t/year</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Page -->
+        <div id="map-page" class="page-content">
+            <div class="sidebar">
+                <div class="panel">
+                    <h2><i class="fas fa-layer-group"></i> Map Layers</h2>
+                    <div class="layer-controls">
+                        <button class="layer-btn active" data-layer="production"><i class="fas fa-industry"></i> Production</button>
+                        <button class="layer-btn" data-layer="storage"><i class="fas fa-database"></i> Storage</button>
+                        <button class="layer-btn" data-layer="pipelines"><i class="fas fa-pipe"></i> Pipelines</button>
+                        <button class="layer-btn" data-layer="renewables"><i class="fas fa-solar-panel"></i> Renewables</button>
+                        <button class="layer-btn" data-layer="demand"><i class="fas fa-building"></i> Demand Centers</button>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2><i class="fas fa-sliders-h"></i> Site Selection Criteria</h2>
+                    <div class="filters">
+                        <label>Proximity to Renewables (km)</label>
+                        <input type="range" id="renewables-proximity" min="0" max="200" value="50">
+                        <span id="proximity-value">50 km</span>
+                        
+                        <label>Market Demand Priority</label>
+                        <select id="demand-priority">
+                            <option>High</option>
+                            <option selected>Medium</option>
+                            <option>Low</option>
+                        </select>
+                        
+                        <label>Regulatory Zone</label>
+                        <select id="regulatory-zone">
+                            <option>All Zones</option>
+                            <option>Green Hydrogen Incentive Areas</option>
+                            <option>Industrial Corridors</option>
+                            <option>Port Areas</option>
+                        </select>
+                        
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="existing-infra" checked>
+                                <label for="existing-infra">Near Existing Infrastructure</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="transport-access" checked>
+                                <label for="transport-access">Good Transport Access</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="low-carbon">
+                                <label for="low-carbon">Low Carbon Emission Zones</label>
+                            </div>
+                        </div>
+                        
+                        <button class="btn" id="apply-filters"><i class="fas fa-filter"></i> Apply Filters</button>
+                        <button class="btn btn-outline" id="run-optimization"><i class="fas fa-cogs"></i> Run Optimization</button>
+                    </div>
+                    <div class="filter-summary" id="filter-summary" style="display: none;">
+                        Filters applied. Showing <span id="filtered-count">0</span> of <span id="total-count">0</span> sites.
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2><i class="fas fa-star"></i> Recommended Sites</h2>
+                    <div class="analysis-results">
+                        <p>Based on your criteria, we recommend these areas for new hydrogen projects:</p>
+                        <ul class="results-list" id="recommended-sites">
+                            <li data-lat="37.7749" data-lng="-122.4194">Coastal North Region - 89% match</li>
+                            <li data-lat="41.8781" data-lng="-87.6298">Central Industrial Corridor - 78% match</li>
+                            <li data-lat="32.7157" data-lng="-117.1611">Southwest Renewable Zone - 72% match</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="loading" id="map-loading">Updating map data...</div>
+                
+                <div class="map-controls">
+                    <div class="map-control-btn" title="Zoom in" onclick="map.zoomIn()">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div class="map-control-btn" title="Zoom out" onclick="map.zoomOut()">
+                        <i class="fas fa-minus"></i>
+                    </div>
+                    <div class="map-control-btn" title="Reset view" onclick="map.setView([39.8283, -98.5795], 4)">
+                        <i class="fas fa-globe-americas"></i>
+                    </div>
+                </div>
+                
+                <div class="legend">
+                    <h3>Map Legend</h3>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #e74c3c;"></div>
+                        <span>Production Plants</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #3498db;"></div>
+                        <span>Storage Facilities</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #2ecc71;"></div>
+                        <span>Renewable Sources</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #f39c12;"></div>
+                        <span>Demand Centers</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #9b59b6;"></div>
+                        <span>Pipelines (Existing)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #34495e;"></div>
+                        <span>Pipelines (Planned)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Analytics Page -->
+        <div id="analytics" class="page-content">
+            <h2>Market Analytics & Forecasting</h2>
+            <p class="subtitle">Detailed analysis of hydrogen market trends and investment opportunities</p>
+            
+            <div class="dashboard-grid">
+                <div class="chart-container">
+                    <canvas id="marketTrendsChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="investmentChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="chart-container">
+                    <canvas id="technologyPieChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="regionalPieChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2><i class="fas fa-chart-bar"></i> Regional Analysis</h2>
+                <div class="filters">
+                    <label>Select Region</label>
+                    <select id="region-select">
+                        <option>West Coast</option>
+                        <option>Midwest</option>
+                        <option selected>Northeast</option>
+                        <option>South</option>
+                        <option>Mountain States</option>
+                    </select>
+                    
+                    <label>Time Horizon</label>
+                    <select id="time-horizon">
+                        <option>2023-2025</option>
+                        <option selected>2023-2030</option>
+                        <option>2023-2035</option>
+                        <option>2023-2040</option>
+                    </select>
+                    
+                    <button class="btn" id="generate-report"><i class="fas fa-file-pdf"></i> Generate Report</button>
+                </div>
+            </div>
+            
+            <div class="project-card" id="regional-analysis-results">
+                <h3>Regional Investment Summary - Northeast</h3>
+                <p>The Northeast region shows strong potential for green hydrogen development due to high renewable energy potential and established industrial demand centers.</p>
+                
+                <div class="project-details">
+                    <div class="detail-item">
+                        <h4>Estimated CAPEX</h4>
+                        <div>$3.2-4.5B</div>
+                    </div>
+                    <div class="detail-item">
+                        <h4>Potential ROI</h4>
+                        <div>9-12%</div>
+                    </div>
+                    <div class="detail-item">
+                        <h4>Payback Period</h4>
+                        <div>8-10 years</div>
+                    </div>
+                    <div class="detail-item">
+                        <h4>Policy Support</h4>
+                        <div>High</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Calculator Page -->
+        <div id="calculator" class="page-content">
+            <h2>Hydrogen Project Financial Calculator</h2>
+            <p class="subtitle">Estimate project costs, ROI, and funding requirements</p>
+            
+            <div class="calculator">
+                <div class="calculator-grid">
+                    <div class="calculator-input-group">
+                        <label for="calc-project-type">Project Type</label>
+                        <select id="calc-project-type">
+                            <option>Production (Electrolysis)</option>
+                            <option>Production (SMR with CCS)</option>
+                            <option>Storage Facility</option>
+                            <option>Distribution Network</option>
+                            <option>Refueling Station</option>
+                        </select>
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-capacity">Capacity (t/year)</label>
+                        <input type="number" id="calc-capacity" value="1000" min="100" max="100000">
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-energy-source">Energy Source</label>
+                        <select id="calc-energy-source">
+                            <option>Solar</option>
+                            <option>Wind</option>
+                            <option>Grid Mix</option>
+                            <option>Hydroelectric</option>
+                        </select>
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-location">Location</label>
+                        <select id="calc-location">
+                            <option>West Coast</option>
+                            <option>Midwest</option>
+                            <option selected>Northeast</option>
+                            <option>South</option>
+                            <option>Mountain States</option>
+                        </select>
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-capex">CAPEX per ton ($)</label>
+                        <input type="number" id="calc-capex" value="2500000" min="1000000" max="5000000">
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-opex">OPEX per ton ($/year)</label>
+                        <input type="number" id="calc-opex" value="150000" min="50000" max="300000">
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-price">Hydrogen Price ($/kg)</label>
+                        <input type="number" id="calc-price" value="4.5" min="2" max="10" step="0.1">
+                    </div>
+                    
+                    <div class="calculator-input-group">
+                        <label for="calc-lifespan">Project Lifespan (years)</label>
+                        <input type="number" id="calc-lifespan" value="20" min="5" max="30">
+                    </div>
+                </div>
+                
+                <button class="btn" id="calculate-btn"><i class="fas fa-calculator"></i> Calculate Financials</button>
+                
+                <div class="calculator-result" id="calculator-results">
+                    <h3>Financial Projections</h3>
+                    
+                    <div class="calculator-results-grid">
+                        <div class="result-card">
+                            <h4>Total CAPEX</h4>
+                            <div class="value" id="total-capex">$2,500,000</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Annual OPEX</h4>
+                            <div class="value" id="annual-opex">$150,000</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Annual Revenue</h4>
+                            <div class="value" id="annual-revenue">$4,500,000</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Annual Profit</h4>
+                            <div class="value" id="annual-profit">$4,350,000</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Payback Period</h4>
+                            <div class="value" id="payback">0.57</div>
+                            <div class="unit">years</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>ROI (10 years)</h4>
+                            <div class="value" id="roi">1,740%</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container" style="height: 250px; margin-top: 1.5rem;">
+                        <canvas id="financialChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Sources Page -->
+        <div id="data" class="page-content">
+            <h2>Data Sources & Integration</h2>
+            <p class="subtitle">Connected data sources and real-time information feeds</p>
+            
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Connected Data Sources</h3>
+                    <div class="value">14</div>
+                    <div class="trend"><i class="fas fa-plug"></i> 3 new connections this month</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Data Points</h3>
+                    <div class="value">2.8M</div>
+                    <div class="trend"><i class="fas fa-arrow-up"></i> 120K added today</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Update Frequency</h3>
+                    <div class="value">Real-time</div>
+                    <div class="trend"><i class="fas fa-sync"></i> 15 min intervals for some sources</div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <h2><i class="fas fa-database"></i> Active Data Sources</h2>
+                <div class="data-sources-list">
+                    <div class="data-source-item">
+                        <div class="source-header">
+                            <h4>DOE Hydrogen Program Database</h4>
+                            <span class="status-indicator active"></span>
+                        </div>
+                        <p>Comprehensive database of hydrogen projects and infrastructure</p>
+                        <div class="source-details">
+                            <span>Updated: Real-time</span>
+                            <span>Records: 850,000</span>
+                        </div>
+                    </div>
+                    
+                    <div class="data-source-item">
+                        <div class="source-header">
+                            <h4>EIA Energy Infrastructure</h4>
+                            <span class="status-indicator active"></span>
+                        </div>
+                        <p>Energy infrastructure data including pipelines and power plants</p>
+                        <div class="source-details">
+                            <span>Updated: Daily</span>
+                            <span>Records: 420,000</span>
+                        </div>
+                    </div>
+                    
+                    <div class="data-source-item">
+                        <div class="source-header">
+                            <h4>NREL Renewable Resource Data</h4>
+                            <span class="status-indicator active"></span>
+                        </div>
+                        <p>Solar and wind resource potential data</p>
+                        <div class="source-details">
+                            <span>Updated: Weekly</span>
+                            <span>Records: 1,200,000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <div class="notification-content">Operation completed successfully!</div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Global variables
+        let map;
+        let markers = [];
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            initCharts();
+            setupEventListeners();
+            showNotification('Application loaded successfully!', 'success');
+        });
+        
+        // Initialize the map
+        function initMap() {
+            // Create map centered on the US
+            map = L.map('map').setView([39.8283, -98.5795], 4);
+            
+            // Add base tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add sample markers for demonstration
+            addSampleMarkers();
+        }
+        
+        // Add sample markers to the map
+        function addSampleMarkers() {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+            
+            // Sample data for demonstration
+            const locations = [
+                {lat: 37.7749, lng: -122.4194, type: 'production', name: 'San Francisco Plant', capacity: '1200 t/year'},
+                {lat: 40.7128, lng: -74.0060, type: 'demand', name: 'New York Demand Center', demand: 'High'},
+                {lat: 41.8781, lng: -87.6298, type: 'storage', name: 'Chicago Storage Facility', capacity: '300 t'},
+                {lat: 32.7157, lng: -117.1611, type: 'production', name: 'San Diego Electrolyzer', capacity: '850 t/year'},
+                {lat: 39.7392, lng: -104.9903, type: 'renewable', name: 'Denver Solar Farm', type: 'Solar'},
+                {lat: 29.7604, lng: -95.3698, type: 'pipeline', name: 'Houston Pipeline Junction'},
+                {lat: 47.6062, lng: -122.3321, type: 'demand', name: 'Seattle Industrial Area', demand: 'Medium'},
+                {lat: 33.4484, lng: -112.0740, type: 'demand', name: 'Phoenix Industrial User', demand: 'High'},
+                {lat: 30.2672, lng: -97.7431, type: 'production', name: 'Austin Green H2 Facility', capacity: '950 t/year'},
+                {lat: 42.3601, lng: -71.0589, type: 'storage', name: 'Boston Storage Site', capacity: '450 t'}
+            ];
+            
+            // Define colors for different types
+            const colors = {
+                production: '#e74c3c',
+                storage: '#3498db',
+                demand: '#f39c12',
+                renewable: '#2ecc71',
+                pipeline: '#9b59b6',
+                distribution: '#34495e'
+            };
+            
+            // Add markers to the map
+            locations.forEach(location => {
+                const marker = L.circleMarker([location.lat, location.lng], {
+                    color: colors[location.type],
+                    fillColor: colors[location.type],
+                    fillOpacity: 0.7,
+                    radius: 8
+                }).addTo(map);
+                
+                // Create popup content based on type
+                let popupContent = `<strong>${location.name}</strong><br>Type: ${location.type}`;
+                if (location.capacity) popupContent += `<br>Capacity: ${location.capacity}`;
+                if (location.demand) popupContent += `<br>Demand: ${location.demand}`;
+                if (location.type === 'renewable') popupContent += `<br>Resource: ${location.type}`;
+                
+                marker.bindPopup(popupContent);
+                markers.push(marker);
+            });
+            
+            // Add pipeline lines
+            const pipeline1 = L.polyline([
+                [37.7749, -122.4194],
+                [32.7157, -117.1611],
+                [29.7604, -95.3698]
+            ], {color: '#9b59b6', weight: 4}).addTo(map);
+            
+            const pipeline2 = L.polyline([
+                [41.8781, -87.6298],
+                [39.7392, -104.9903],
+                [37.7749, -122.4194]
+            ], {color: '#34495e', weight: 4, dashArray: '5, 10'}).addTo(map);
+            
+            markers.push(pipeline1, pipeline2);
+        }
+        
+        // Initialize charts
+        function initCharts() {
+            // Main chart on home page
+            const mainCtx = document.getElementById('mainChart').getContext('2d');
+            new Chart(mainCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Hydrogen Production (tons)',
+                        data: [120, 150, 180, 210, 250, 300, 350, 400, 450, 500, 550, 600],
+                        borderColor: '#2c5f7e',
+                        backgroundColor: 'rgba(44, 95, 126, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Monthly Hydrogen Production Growth'
+                        }
+                    }
+                }
+            });
+            
+            // Production capacity chart
+            const productionCtx = document.getElementById('productionChart').getContext('2d');
+            new Chart(productionCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Green H2', 'Blue H2', 'Grey H2', 'Other'],
+                    datasets: [{
+                        label: 'Current Capacity (tons/year)',
+                        data: [1850, 1200, 800, 400],
+                        backgroundColor: ['#3ba99c', '#3498db', '#e74c3c', '#f39c12']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Hydrogen Production by Type'
+                        }
+                    }
+                }
+            });
+            
+            // Demand forecast chart
+            const demandCtx = document.getElementById('demandChart').getContext('2d');
+            new Chart(demandCtx, {
+                type: 'line',
+                data: {
+                    labels: ['2020', '2021', '2022', '2023', '2024', '2025', '2026'],
+                    datasets: [{
+                        label: 'Projected Demand (t/year)',
+                        data: [3000, 3500, 4100, 4800, 5600, 6500, 7500],
+                        fill: false,
+                        backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Hydrogen Demand Forecast'
+                        }
+                    }
+                }
+            });
+            
+            // Cost comparison chart
+            const costCtx = document.getElementById('costChart').getContext('2d');
+            new Chart(costCtx, {
+                type: 'line',
+                data: {
+                    labels: ['2020', '2021', '2022', '2023', '2024', '2025'],
+                    datasets: [{
+                        label: 'Green Hydrogen ($/kg)',
+                        data: [5.8, 4.9, 4.2, 3.7, 3.2, 2.8],
+                        fill: false,
+                        backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                        borderColor: 'rgba(46, 204, 113, 1)',
+                        tension: 0.1
+                    }, {
+                        label: 'Gray Hydrogen ($/kg)',
+                        data: [1.7, 2.1, 2.4, 2.6, 2.8, 3.0],
+                        fill: false,
+                        backgroundColor: 'rgba(149, 165, 166, 0.7)',
+                        borderColor: 'rgba(149, 165, 166, 1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Hydrogen Production Cost Trends'
+                        }
+                    }
+                }
+            });
+            
+            // Market trends chart
+            const marketTrendsCtx = document.getElementById('marketTrendsChart').getContext('2d');
+            new Chart(marketTrendsCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Transportation', 'Industry', 'Power Gen', 'Heating', 'Export'],
+                    datasets: [{
+                        label: 'Current Market Share',
+                        data: [15, 65, 8, 7, 5],
+                        backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Projected 2030 Share',
+                        data: [30, 45, 12, 8, 15],
+                        backgroundColor: 'rgba(46, 204, 113, 0.7)',
+                        borderColor: 'rgba(46, 204, 113, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Hydrogen Market Segmentation'
+                        }
+                    }
+                }
+            });
+            
+            // Investment allocation chart
+            const investmentCtx = document.getElementById('investmentChart').getContext('2d');
+            new Chart(investmentCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Production', 'Storage', 'Transport', 'Distribution', 'R&D'],
+                    datasets: [{
+                        data: [45, 20, 15, 12, 8],
+                        backgroundColor: [
+                            'rgba(231, 76, 60, 0.7)',
+                            'rgba(52, 152, 219, 0.7)',
+                            'rgba(46, 204, 113, 0.7)',
+                            'rgba(243, 156, 18, 0.7)',
+                            'rgba(155, 89, 182, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(231, 76, 60, 1)',
+                            'rgba(52, 152, 219, 1)',
+                            'rgba(46, 204, 113, 1)',
+                            'rgba(243, 156, 18, 1)',
+                            'rgba(155, 89, 182, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Investment Allocation'
+                        }
+                    }
+                }
+            });
+            
+            // Technology pie chart
+            const technologyPieCtx = document.getElementById('technologyPieChart').getContext('2d');
+            new Chart(technologyPieCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Alkaline Electrolysis', 'PEM Electrolysis', 'SMR with CCS', 'Biomass Gasification', 'Other'],
+                    datasets: [{
+                        data: [35, 25, 20, 15, 5],
+                        backgroundColor: [
+                            'rgba(59, 169, 156, 0.7)',
+                            'rgba(52, 152, 219, 0.7)',
+                            'rgba(44, 95, 126, 0.7)',
+                            'rgba(243, 156, 18, 0.7)',
+                            'rgba(149, 165, 166, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(59, 169, 156, 1)',
+                            'rgba(52, 152, 219, 1)',
+                            'rgba(44, 95, 126, 1)',
+                            'rgba(243, 156, 18, 1)',
+                            'rgba(149, 165, 166, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Production Technology Distribution'
+                        }
+                    }
+                }
+            });
+            
+            // Regional distribution pie chart
+            const regionalPieCtx = document.getElementById('regionalPieChart').getContext('2d');
+            new Chart(regionalPieCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['West Coast', 'Midwest', 'Northeast', 'South', 'Mountain States'],
+                    datasets: [{
+                        data: [30, 20, 25, 15, 10],
+                        backgroundColor: [
+                            'rgba(231, 76, 60, 0.7)',
+                            'rgba(52, 152, 219, 0.7)',
+                            'rgba(46, 204, 113, 0.7)',
+                            'rgba(243, 156, 18, 0.7)',
+                            'rgba(155, 89, 182, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(231, 76, 60, 1)',
+                            'rgba(52, 152, 219, 1)',
+                            'rgba(46, 204, 113, 1)',
+                            'rgba(243, 156, 18, 1)',
+                            'rgba(155, 89, 182, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Regional Distribution of Projects'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            // Navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    showPage(page);
+                    
+                    // Update active nav link
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // Map layer controls
+            document.querySelectorAll('.layer-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    // In a real app, this would toggle map layers
+                    showNotification('Map layers updated', 'info');
+                });
+            });
+            
+            // Filter controls
+            document.getElementById('apply-filters').addEventListener('click', function() {
+                document.getElementById('filter-summary').style.display = 'block';
+                document.getElementById('filtered-count').textContent = '8';
+                document.getElementById('total-count').textContent = '23';
+                showNotification('Filters applied to map data', 'success');
+            });
+            
+            document.getElementById('run-optimization').addEventListener('click', function() {
+                document.getElementById('map-loading').style.display = 'block';
+                
+                // Simulate processing time
+                setTimeout(() => {
+                    document.getElementById('map-loading').style.display = 'none';
+                    showNotification('Site optimization completed', 'success');
+                    
+                    // Add some recommended sites to the map as an example
+                    const recommendations = document.querySelectorAll('#recommended-sites li');
+                    recommendations.forEach(li => {
+                        const lat = li.getAttribute('data-lat');
+                        const lng = li.getAttribute('data-lng');
+                        
+                        L.circleMarker([lat, lng], {
+                            color: '#3ba99c',
+                            fillColor: '#3ba99c',
+                            fillOpacity: 0.7,
+                            radius: 10
+                        }).addTo(map).bindPopup(`<strong>Recommended Site</strong><br>${li.textContent}`);
+                    });
+                }, 2000);
+            });
+            
+            // Calculator
+            document.getElementById('calculate-btn').addEventListener('click', function() {
+                calculateFinancials();
+            });
+            
+            // Range slider
+            const proximitySlider = document.getElementById('renewables-proximity');
+            const proximityValue = document.getElementById('proximity-value');
+            
+            proximitySlider.addEventListener('input', function() {
+                proximityValue.textContent = `${this.value} km`;
+            });
+            
+            // Click on recommended sites
+            document.querySelectorAll('.results-list li').forEach(li => {
+                li.addEventListener('click', function() {
+                    const lat = this.getAttribute('data-lat');
+                    const lng = this.getAttribute('data-lng');
+                    map.setView([lat, lng], 10);
+                });
+            });
+        }
+        
+        // Show/hide page content
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show selected page
+            document.getElementById(pageId === 'map' ? 'map-page' : pageId).classList.add('active');
+            
+            // If showing map, invalidate size to ensure proper rendering
+            if (pageId === 'map' && map) {
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 300);
+            }
+            
+            // If showing calculator, ensure results are hidden initially
+            if (pageId === 'calculator') {
+                document.getElementById('calculator-results').style.display = 'none';
+            }
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const icon = notification.querySelector('i');
+            const content = notification.querySelector('.notification-content');
+            
+            // Set content and icon based on type
+            content.textContent = message;
+            notification.className = 'notification ' + type;
+            
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-circle';
+            } else {
+                icon.className = 'fas fa-info-circle';
+            }
+            
+            // Show notification
+            notification.classList.add('show');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Calculate financials for the calculator
+        function calculateFinancials() {
+            // Get input values
+            const capacity = parseFloat(document.getElementById('calc-capacity').value);
+            const capexPerTon = parseFloat(document.getElementById('calc-capex').value);
+            const opexPerTon = parseFloat(document.getElementById('calc-opex').value);
+            const pricePerKg = parseFloat(document.getElementById('calc-price').value);
+            const lifespan = parseFloat(document.getElementById('calc-lifespan').value);
+            
+            // Perform calculations
+            const totalCapex = capacity * capexPerTon;
+            const annualOpex = capacity * opexPerTon;
+            const annualRevenue = capacity * pricePerKg * 1000; // Convert tons to kg
+            const annualProfit = annualRevenue - annualOpex;
+            const paybackPeriod = totalCapex / annualProfit;
+            const roi = (annualProfit * lifespan - totalCapex) / totalCapex * 100;
+            
+            // Simplified NPV calculation (in a real app, this would be more complex)
+            const npv = (annualProfit * lifespan) - totalCapex;
+            
+            // Update results
+            document.getElementById('total-capex').textContent = formatCurrency(totalCapex);
+            document.getElementById('annual-opex').textContent = formatCurrency(annualOpex);
+            document.getElementById('annual-revenue').textContent = formatCurrency(annualRevenue);
+            document.getElementById('annual-profit').textContent = formatCurrency(annualProfit);
+            document.getElementById('payback').textContent = paybackPeriod.toFixed(2);
+            document.getElementById('roi').textContent = roi.toFixed(0) + '%';
+            
+            // Show results
+            document.getElementById('calculator-results').style.display = 'block';
+            
+            // Update financial chart
+            updateFinancialChart(totalCapex, annualOpex, annualRevenue, annualProfit);
+            
+            showNotification('Financial calculation completed', 'success');
+        }
+        
+        // Format currency for display
+        function formatCurrency(amount) {
+            return '$' + amount.toLocaleString(undefined, {maximumFractionDigits: 0});
+        }
+        
+        // Update financial chart
+        function updateFinancialChart(capex, opex, revenue, profit) {
+            const ctx = document.getElementById('financialChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (window.financialChart) {
+                window.financialChart.destroy();
+            }
+            
+            // Create new chart
+            window.financialChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['CAPEX', 'OPEX (Annual)', 'Revenue (Annual)', 'Profit (Annual)'],
+                    datasets: [{
+                        label: 'Financial Metrics ($)',
+                        data: [capex, opex, revenue, profit],
+                        backgroundColor: ['#1a3a4a', '#2c5f7e', '#3ba99c', '#f39c12']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Project Financial Overview'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            type: 'logarithmic' // Use logarithmic scale for large value ranges
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
